@@ -9,10 +9,11 @@ extends Node3D
 @export var material_pared: Material
 @export var bola: RigidBody3D
 
-var _nivel := 1
-var _tiempo := 0.0
-var _mejor := -1.0
-var _etiqueta: Label
+@export_group("Vida")
+@export var vida_max := 100.0
+@export var dano_por_impacto := 3.0   # daño por cada m/s de impacto
+@export var escalado_dano := 0.2      # +20% de daño por nivel
+@export var curacion_por_nivel := 0.4 # recupera 40% al pasar de nivel
 
 var _contenedor: Node3D
 var _mat: Material
@@ -20,16 +21,201 @@ var _mat_meta: Material
 var _rng := RandomNumberGenerator.new()
 var _celda_inicio := Vector2i.ZERO
 
+var _nivel := 1
+var _tiempo := 0.0
+var _mejor := -1.0
+var _vida := 100.0
+
+var _etiqueta: Label
+var _barra: ProgressBar
+var _estilo_barra: StyleBoxFlat
+
+var _menu: CanvasLayer
+var _menu_titulo: Label
+var _menu_detalle: Label
+var _menu_boton: Button
+
 
 func _ready():
 	if bola == null:
-		bola = get_node_or_null("Ball") as RigidBody3D
-	generar()
+		for hijo in get_children():
+			if hijo is RigidBody3D:
+				bola = hijo as RigidBody3D
+	_vida = vida_max
 	_crear_hud()
+	_crear_menu()
+	generar()
+	_mostrar_menu("NEON TOWER", "Inclina el celular\npara llegar a la meta", "JUGAR")
+
 
 func _process(delta):
 	_tiempo += delta
 	_actualizar_hud()
+
+
+# ---------- Flujo del juego ----------
+
+func _iniciar_partida():
+	_nivel = 1
+	_tiempo = 0.0
+	_vida = vida_max
+	generar()
+	_colocar_bola()
+	_actualizar_hud()
+	_menu.visible = false
+	get_tree().paused = false
+
+
+func recibir_golpe(impacto: float):
+	if get_tree().paused or _vida <= 0.0:
+		return
+	var mult := 1.0 + escalado_dano * (_nivel - 1)
+	_vida = maxf(0.0, _vida - impacto * dano_por_impacto * mult)
+	if _vida <= 0.0:
+		call_deferred("_fin_del_juego")
+
+
+func _fin_del_juego():
+	var detalle := "Llegaste al nivel %d" % _nivel
+	if _mejor >= 0.0:
+		detalle += "\nMejor tiempo: %.1f s" % _mejor
+	_mostrar_menu("FIN DEL JUEGO", detalle, "REINTENTAR")
+
+
+func _on_meta_alcanzada(body: Node3D):
+	if body is RigidBody3D:
+		call_deferred("_nuevo_nivel")
+
+
+func _nuevo_nivel():
+	if _mejor < 0.0 or _tiempo < _mejor:
+		_mejor = _tiempo
+	_nivel += 1
+	_tiempo = 0.0
+	_vida = minf(vida_max, _vida + vida_max * curacion_por_nivel)
+	if semilla != 0:
+		semilla += 1
+	generar()
+	_colocar_bola()
+	_actualizar_hud()
+
+
+func _colocar_bola():
+	if bola:
+		var p := _centro_celda(_celda_inicio.x, _celda_inicio.y)
+		bola.global_position = to_global(p + Vector3(0, 0.6, 0))
+		bola.linear_velocity = Vector3.ZERO
+		bola.angular_velocity = Vector3.ZERO
+
+
+# ---------- Interfaz ----------
+
+func _crear_hud():
+	var capa := CanvasLayer.new()
+	add_child(capa)
+
+	# Barra de vida: delgada, arriba y de lado a lado
+	_barra = ProgressBar.new()
+	_barra.show_percentage = false
+	_barra.max_value = vida_max
+	var fondo := StyleBoxFlat.new()
+	fondo.bg_color = Color(0.05, 0.05, 0.08, 0.8)
+	fondo.border_color = Color(0, 1, 1)
+	fondo.set_border_width_all(2)
+	fondo.set_corner_radius_all(6)
+	_estilo_barra = StyleBoxFlat.new()
+	_estilo_barra.bg_color = Color(0, 1, 1)
+	_estilo_barra.set_corner_radius_all(6)
+	_barra.add_theme_stylebox_override("background", fondo)
+	_barra.add_theme_stylebox_override("fill", _estilo_barra)
+	capa.add_child(_barra)
+	_barra.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	_barra.offset_left = 40
+	_barra.offset_right = -40
+	_barra.offset_top = 50
+	_barra.offset_bottom = 74
+
+	# Texto en una sola línea debajo de la barra
+	_etiqueta = Label.new()
+	_etiqueta.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_etiqueta.add_theme_font_size_override("font_size", 36)
+	_etiqueta.add_theme_color_override("font_color", Color(0, 1, 1))
+	_etiqueta.add_theme_color_override("font_outline_color", Color.BLACK)
+	_etiqueta.add_theme_constant_override("outline_size", 8)
+	capa.add_child(_etiqueta)
+	_etiqueta.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	_etiqueta.offset_left = 40
+	_etiqueta.offset_right = -40
+	_etiqueta.offset_top = 82
+
+	_actualizar_hud()
+
+
+func _actualizar_hud():
+	var texto := "Nivel %d  |  %.1f s" % [_nivel, _tiempo]
+	if _mejor >= 0.0:
+		texto += "  |  Mejor %.1f s" % _mejor
+	_etiqueta.text = texto
+	_barra.value = _vida
+	_estilo_barra.bg_color = Color(1, 0, 0.3).lerp(Color(0, 1, 1), _vida / vida_max)
+
+func _crear_menu():
+	var cian := Color(0, 1, 1)
+
+	_menu = CanvasLayer.new()
+	_menu.layer = 10
+	_menu.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(_menu)
+
+	var velo := ColorRect.new()
+	velo.color = Color(0, 0, 0, 0.7)
+	_menu.add_child(velo)
+	velo.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	var centro := CenterContainer.new()
+	_menu.add_child(centro)
+	centro.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	var caja := VBoxContainer.new()
+	caja.add_theme_constant_override("separation", 50)
+	centro.add_child(caja)
+
+	_menu_titulo = Label.new()
+	_menu_titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_menu_titulo.add_theme_font_size_override("font_size", 96)
+	_menu_titulo.add_theme_color_override("font_color", cian)
+	caja.add_child(_menu_titulo)
+
+	_menu_detalle = Label.new()
+	_menu_detalle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_menu_detalle.add_theme_font_size_override("font_size", 40)
+	caja.add_child(_menu_detalle)
+
+	_menu_boton = Button.new()
+	_menu_boton.custom_minimum_size = Vector2(500, 140)
+	_menu_boton.add_theme_font_size_override("font_size", 64)
+	var estilo := StyleBoxFlat.new()
+	estilo.bg_color = Color(0.03, 0.12, 0.14)
+	estilo.border_color = cian
+	estilo.set_border_width_all(4)
+	estilo.set_corner_radius_all(20)
+	for nombre in ["normal", "hover", "pressed", "focus"]:
+		_menu_boton.add_theme_stylebox_override(nombre, estilo)
+	for nombre in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		_menu_boton.add_theme_color_override(nombre, cian)
+	_menu_boton.pressed.connect(_iniciar_partida)
+	caja.add_child(_menu_boton)
+
+
+func _mostrar_menu(titulo: String, detalle: String, boton: String):
+	_menu_titulo.text = titulo
+	_menu_detalle.text = detalle
+	_menu_boton.text = boton
+	_menu.visible = true
+	get_tree().paused = true
+
+
+# ---------- Laberinto ----------
 
 func generar():
 	if semilla == 0:
@@ -84,7 +270,6 @@ func generar():
 				pared_abajo[sig.x][sig.y] = false
 			visitada[sig.x][sig.y] = true
 			pila.append(sig)
-			# La celda más profunda del recorrido es la más lejana
 			if pila.size() > prof_max:
 				prof_max = pila.size()
 				meta = sig
@@ -163,26 +348,6 @@ func _crear_meta(celda: Vector2i):
 	_contenedor.add_child(area)
 
 
-func _on_meta_alcanzada(body: Node3D):
-	if body == bola:
-		call_deferred("_nuevo_nivel")
-
-
-func _nuevo_nivel():
-	if semilla != 0:
-		semilla += 1
-	if _mejor < 0.0 or _tiempo < _mejor:
-		_mejor = _tiempo
-	_nivel += 1
-	_tiempo = 0.0
-	generar()
-	if bola:
-		var p := _centro_celda(_celda_inicio.x, _celda_inicio.y)
-		bola.global_position = to_global(p + Vector3(0, 0.6, 0))
-		bola.linear_velocity = Vector3.ZERO
-		bola.angular_velocity = Vector3.ZERO
-
-
 func _obtener_material() -> Material:
 	if material_pared:
 		return material_pared
@@ -205,21 +370,3 @@ func _obtener_material_meta() -> Material:
 		m.emission_energy_multiplier = 3.0
 		_mat_meta = m
 	return _mat_meta
-	
-func _crear_hud():
-	var capa := CanvasLayer.new()
-	add_child(capa)
-	_etiqueta = Label.new()
-	_etiqueta.position = Vector2(40, 60)
-	_etiqueta.add_theme_font_size_override("font_size", 48)
-	_etiqueta.add_theme_color_override("font_color", Color(0, 1, 1))
-	_etiqueta.add_theme_color_override("font_outline_color", Color.BLACK)
-	_etiqueta.add_theme_constant_override("outline_size", 10)
-	capa.add_child(_etiqueta)
-
-
-func _actualizar_hud():
-	var texto := "Nivel %d\nTiempo %.1f s" % [_nivel, _tiempo]
-	if _mejor >= 0.0:
-		texto += "\nMejor %.1f s" % _mejor
-	_etiqueta.text = texto

@@ -62,6 +62,9 @@ func _golpe(impacto: float):
 	_sonido.pitch_scale = randf_range(0.9, 1.1)
 	_sonido.play()
 	Input.vibrate_handheld(int(lerpf(20.0, 60.0, f)), f)
+	var padre := get_parent()
+	if padre and padre.has_method("recibir_golpe"):
+		padre.call("recibir_golpe", impacto)
 
 
 func _crear_sonido_choque() -> AudioStreamWAV:
