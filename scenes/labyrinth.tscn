@@ -1,5 +1,6 @@
-[gd_scene load_steps=10 format=3 uid="uid://c8sq683x4fja"]
+[gd_scene load_steps=11 format=3 uid="uid://c8sq683x4fja"]
 
+[ext_resource type="Script" path="res://scenes/labyrinth.gd" id="1_0xd7e"]
 [ext_resource type="Script" path="res://scenes/ball.gd" id="1_y0w38"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_wwot7"]
@@ -10,15 +11,6 @@ albedo_color = Color(0.0666667, 0.0666667, 0.0666667, 1)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_goudf"]
 size = Vector3(10, 0.5, 18)
-
-[sub_resource type="SphereMesh" id="SphereMesh_i7w4i"]
-radius = 0.3
-height = 0.6
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_4bh20"]
-
-[sub_resource type="SphereShape3D" id="SphereShape3D_gq4xh"]
-radius = 0.3
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_7tfn7"]
 albedo_color = Color(0, 1, 1, 1)
@@ -32,7 +24,17 @@ glow_enabled = true
 glow_intensity = 0.5
 glow_hdr_threshold = 1.5
 
+[sub_resource type="SphereMesh" id="SphereMesh_i7w4i"]
+radius = 0.3
+height = 0.6
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_4bh20"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_gq4xh"]
+radius = 0.3
+
 [node name="Labyrinth" type="Node3D"]
+script = ExtResource("1_0xd7e")
 
 [node name="Floor" type="MeshInstance3D" parent="."]
 mesh = SubResource("BoxMesh_wwot7")
@@ -46,62 +48,28 @@ shape = SubResource("BoxShape3D_goudf")
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="Floor"]
 transform = Transform3D(1, 0, 0, 0, 0.5, 0.866025, 0, -0.866025, 0.5, 0, 0, 0)
 
-[node name="Ball" type="RigidBody3D" parent="Floor"]
-transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0.6, 7)
-continuous_cd = true
-linear_damp_mode = 1
-linear_damp = 2.0
-script = ExtResource("1_y0w38")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Floor/Ball"]
-transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0)
-mesh = SubResource("SphereMesh_i7w4i")
-skeleton = NodePath("../../..")
-surface_material_override/0 = SubResource("StandardMaterial3D_4bh20")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Floor/Ball"]
-shape = SubResource("SphereShape3D_gq4xh")
-
 [node name="NorthWall" type="CSGBox3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -9)
 use_collision = true
-size = Vector3(10.3, 2, 0.3)
+size = Vector3(10.3, 1, 0.3)
 material = SubResource("StandardMaterial3D_7tfn7")
 
 [node name="SouthWall" type="CSGBox3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 9)
 use_collision = true
-size = Vector3(10.3, 2, 0.3)
+size = Vector3(10.3, 1, 0.3)
 material = SubResource("StandardMaterial3D_7tfn7")
 
 [node name="EastWall" type="CSGBox3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 1, 0)
 use_collision = true
-size = Vector3(0.3, 2, 18)
+size = Vector3(0.3, 1, 18)
 material = SubResource("StandardMaterial3D_7tfn7")
 
 [node name="WestWall" type="CSGBox3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 1, 0)
 use_collision = true
-size = Vector3(0.3, 2, 18)
-material = SubResource("StandardMaterial3D_7tfn7")
-
-[node name="InnerWall1" type="CSGBox3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.35, 1, -3.474)
-use_collision = true
-size = Vector3(5, 2, 0.3)
-material = SubResource("StandardMaterial3D_7tfn7")
-
-[node name="InnerWall2" type="CSGBox3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.35, 1, 0.99)
-use_collision = true
-size = Vector3(5, 2, 0.3)
-material = SubResource("StandardMaterial3D_7tfn7")
-
-[node name="InnerWall3" type="CSGBox3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.27687, 1, 4.28349)
-use_collision = true
-size = Vector3(5, 2, 0.3)
+size = Vector3(0.3, 1, 18)
 material = SubResource("StandardMaterial3D_7tfn7")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
@@ -111,3 +79,19 @@ environment = SubResource("Environment_s2gya")
 transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 14, 0)
 keep_aspect = 0
 fov = 50.0
+
+[node name="Ball" type="RigidBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 0.6, 8)
+continuous_cd = true
+linear_damp_mode = 1
+linear_damp = 2.0
+script = ExtResource("1_y0w38")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Ball"]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0)
+mesh = SubResource("SphereMesh_i7w4i")
+skeleton = NodePath("../..")
+surface_material_override/0 = SubResource("StandardMaterial3D_4bh20")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Ball"]
+shape = SubResource("SphereShape3D_gq4xh")
