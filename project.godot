@@ -17,7 +17,9 @@ general/ios/enabled=false
 config/name="Neon Tower"
 run/main_scene="res://scenes/labyrinth.tscn"
 config/features=PackedStringArray("4.5", "GL Compatibility")
-config/icon="res://icon.svg"
+boot_splash/bg_color=Color(0.019607844, 0.02745098, 0.05882353, 1)
+boot_splash/image="uid://bqsci0eqw7q5"
+config/icon="uid://bqsci0eqw7q5"
 
 [display]
 

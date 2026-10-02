@@ -35,8 +35,8 @@ extends Node3D
 @export var max_cargas := 3
 
 @export_group("Ovni")
-#@export var ovni_espera_inicial := 75.0   # segundos en un nivel antes del primer ovni
-@export var ovni_espera_inicial := 6.0   # segundos en un nivel antes del primer ovni
+@export var ovni_espera_inicial := 75.0   # segundos en un nivel antes del primer ovni
+#@export var ovni_espera_inicial := 6.0   # segundos en un nivel antes del primer ovni
 @export var ovni_factor := 0.8            # cada aparición acorta la espera (x0.8)
 @export var ovni_espera_min := 20.0
 
