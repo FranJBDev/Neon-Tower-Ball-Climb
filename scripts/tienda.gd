@@ -1,34 +1,43 @@
 class_name Tienda
 extends CanvasLayer
-## Tienda de mejoras permanentes que se pagan con monedas.
+## Tienda: poderes de un solo uso y mejoras permanentes, pagados con monedas.
 
 signal comprada
 
+const CONSUMIBLES := {
+	"c_fantasma": {"nombre": "Fantasma (1 uso)", "desc": "lo activas con el botón", "precio": 25, "tipo": GestorPowerUps.Tipo.FANTASMA},
+	"c_ahuyentar": {"nombre": "Ahuyentar (1 uso)", "desc": "lo activas con el botón", "precio": 25, "tipo": GestorPowerUps.Tipo.AHUYENTAR},
+}
 const MEJORAS := {
 	"vida": {"nombre": "Vida máxima", "desc": "+10% de vida", "max": 5, "precio": 40},
 	"fantasma": {"nombre": "Modo fantasma", "desc": "+1 s de duración", "max": 4, "precio": 60},
 	"ahuyentar": {"nombre": "Ahuyentar", "desc": "+1 s de duración", "max": 4, "precio": 60},
 	"cargas": {"nombre": "Mochila", "desc": "+1 carga máxima de poderes", "max": 3, "precio": 80},
-	"iman": {"nombre": "Imán", "desc": "atrae monedas desde más lejos", "max": 4, "precio": 50},
+	"iman": {"nombre": "Imán", "desc": "+8 s de imán al empezar cada nivel", "max": 4, "precio": 50},
 }
 const ORO := Color(1.0, 0.72, 0.08)
 const CIAN := Color(0.0, 1.0, 1.0)
 const CRECIMIENTO := 1.7
 
 var monedas := 0
-var margen_inferior := 0.0      # alto del banner de anuncios
-
-var fuente_margen: Callable   # de dónde sacar el alto del banner
+var tope_cargas := 3
+var margen_inferior := 0.0
+var fuente_margen: Callable      # de dónde sacar el alto del banner
+var cargas := {
+	GestorPowerUps.Tipo.FANTASMA: 0,
+	GestorPowerUps.Tipo.AHUYENTAR: 0,
+}
 
 var _niveles := {}
 var _sucio := false
-var _botones_mejora := {}
+var _botones_item := {}
 var _boton: Button
 var _panel: Control
 var _fondo: ColorRect
 var _cabecera: VBoxContainer
 var _etiqueta_monedas: Label
 var _scroll: ScrollContainer
+var _lista: VBoxContainer
 var _cerrar: Button
 
 
@@ -38,6 +47,8 @@ func _ready():
 	monedas = Ajustes.leer("tienda", "monedas", 0)
 	for id in MEJORAS:
 		_niveles[id] = Ajustes.leer("tienda", "n_" + id, 0)
+	for tipo in cargas:
+		cargas[tipo] = Ajustes.leer("tienda", "carga_%d" % tipo, 0)
 
 	_boton = Button.new()
 	_boton.focus_mode = Control.FOCUS_NONE
@@ -50,14 +61,8 @@ func _ready():
 	_crear_panel()
 	_panel.visible = false
 	_refrescar()
-	
 	#debug monedas
 	monedas = 500
-
-func _margen() -> float:
-	if fuente_margen.is_valid():
-		return float(fuente_margen.call())
-	return margen_inferior
 
 func _crear_panel():
 	_panel = Control.new()
@@ -87,20 +92,17 @@ func _crear_panel():
 	_scroll = ScrollContainer.new()
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_panel.add_child(_scroll)
-	var lista := VBoxContainer.new()
-	lista.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lista.add_theme_constant_override("separation", 14)
-	_scroll.add_child(lista)
+	_lista = VBoxContainer.new()
+	_lista.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_lista.add_theme_constant_override("separation", 14)
+	_scroll.add_child(_lista)
+
+	_seccion("PODERES DE UN USO")
+	for id in CONSUMIBLES:
+		_crear_item(id)
+	_seccion("MEJORAS PERMANENTES")
 	for id in MEJORAS:
-		var b := Button.new()
-		b.custom_minimum_size = Vector2(0, 100)
-		b.focus_mode = Control.FOCUS_NONE
-		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.add_theme_font_size_override("font_size", 26)
-		_estilar(b, CIAN)
-		b.pressed.connect(comprar.bind(id))
-		lista.add_child(b)
-		_botones_mejora[id] = b
+		_crear_item(id)
 
 	_cerrar = Button.new()
 	_cerrar.text = "CERRAR"
@@ -109,6 +111,32 @@ func _crear_panel():
 	_estilar(_cerrar, CIAN)
 	_cerrar.pressed.connect(cerrar)
 	_panel.add_child(_cerrar)
+
+
+func _seccion(texto: String):
+	var l := Label.new()
+	l.text = texto
+	l.add_theme_font_size_override("font_size", 24)
+	l.add_theme_color_override("font_color", ORO)
+	_lista.add_child(l)
+
+
+func _crear_item(id: String):
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(0, 100)
+	b.focus_mode = Control.FOCUS_NONE
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	b.add_theme_font_size_override("font_size", 26)
+	_estilar(b, CIAN)
+	b.pressed.connect(comprar.bind(id))
+	_lista.add_child(b)
+	_botones_item[id] = b
+
+
+func _margen() -> float:
+	if fuente_margen.is_valid():
+		return float(fuente_margen.call())
+	return margen_inferior
 
 
 func _process(_delta):
@@ -130,7 +158,8 @@ func _process(_delta):
 		_scroll.size = Vector2(ancho, maxf(100.0, y_cerrar - 16.0 - y_lista))
 		_cerrar.size = Vector2(260, 90)
 		_cerrar.position = Vector2((p.x - 260.0) / 2.0, y_cerrar)
-		
+
+
 func _notification(what):
 	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST:
 		guardar()
@@ -152,10 +181,13 @@ func agregar_monedas(n: int):
 	_sucio = true
 
 
+## Guarda monedas (si cambiaron) y el inventario de poderes.
 func guardar():
 	if _sucio:
 		Ajustes.guardar("tienda", "monedas", monedas)
 		_sucio = false
+	for tipo in cargas:
+		Ajustes.guardar("tienda", "carga_%d" % tipo, cargas[tipo])
 
 
 func mostrar_boton(v: bool):
@@ -175,18 +207,27 @@ func cerrar():
 
 
 func comprar(id: String):
-	var d: Dictionary = MEJORAS[id]
-	var n: int = _niveles[id]
-	if n >= int(d["max"]):
-		return
-	var precio := precio_de(id)
-	if monedas < precio:
-		return
-	monedas -= precio
-	_niveles[id] = n + 1
-	Ajustes.guardar("tienda", "monedas", monedas)
-	Ajustes.guardar("tienda", "n_" + id, n + 1)
-	_sucio = false
+	if CONSUMIBLES.has(id):
+		var c: Dictionary = CONSUMIBLES[id]
+		var tipo: int = c["tipo"]
+		var precio_c := int(c["precio"])
+		if cargas[tipo] >= tope_cargas or monedas < precio_c:
+			return
+		monedas -= precio_c
+		cargas[tipo] += 1
+	else:
+		var d: Dictionary = MEJORAS[id]
+		var n: int = _niveles[id]
+		if n >= int(d["max"]):
+			return
+		var precio := precio_de(id)
+		if monedas < precio:
+			return
+		monedas -= precio
+		_niveles[id] = n + 1
+		Ajustes.guardar("tienda", "n_" + id, n + 1)
+	_sucio = true
+	guardar()
 	_refrescar()
 	comprada.emit()
 
@@ -196,10 +237,23 @@ func comprar(id: String):
 func _refrescar():
 	_boton.text = "TIENDA   %d" % monedas
 	_etiqueta_monedas.text = "Monedas: %d" % monedas
+
+	for id in CONSUMIBLES:
+		var c: Dictionary = CONSUMIBLES[id]
+		var tipo: int = c["tipo"]
+		var b: Button = _botones_item[id]
+		var cabeza := "%s  ·  tienes %d/%d" % [c["nombre"], cargas[tipo], tope_cargas]
+		if cargas[tipo] >= tope_cargas:
+			b.text = "%s\nLLENO" % cabeza
+			b.disabled = true
+		else:
+			b.text = "%s\n%s  ·  %d monedas" % [cabeza, c["desc"], int(c["precio"])]
+			b.disabled = monedas < int(c["precio"])
+
 	for id in MEJORAS:
 		var d: Dictionary = MEJORAS[id]
 		var n: int = _niveles[id]
-		var b: Button = _botones_mejora[id]
+		var b: Button = _botones_item[id]
 		var cabeza := "%s  ·  Nv %d/%d" % [d["nombre"], n, d["max"]]
 		if n >= int(d["max"]):
 			b.text = "%s\n%s  ·  MÁXIMO" % [cabeza, d["desc"]]

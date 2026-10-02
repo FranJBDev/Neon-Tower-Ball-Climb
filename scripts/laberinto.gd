@@ -42,6 +42,8 @@ extends Node3D
 
 @export_group("Monedas")
 @export var monedas_por_nivel := 16
+@export var iman_radio := 4.5
+var _iman_t := 0.0
 
 const OFFSET_CAMARA := Vector3(0, 6, 3)
 var _powerups: GestorPowerUps
@@ -68,10 +70,9 @@ var _anuncios: Anuncios
 var _mejor_nivel := 1
 
 var _botones: BotonesPoder
-var _cargas := {
-	GestorPowerUps.Tipo.FANTASMA: 0,
-	GestorPowerUps.Tipo.AHUYENTAR: 0,
-}
+var _cargas: Dictionary:
+	get:
+		return _tienda.cargas
 
 var _sonidos: Sonidos
 var _consulta: PhysicsShapeQueryParameters3D
@@ -204,6 +205,16 @@ func _process(delta):
 			_terminar_fantasma()
 		else:
 			_revisar_atravesar()
+			
+	if _iman_t > 0.0:
+		_iman_t -= delta
+		if _iman_t <= 0.0:
+			_iman_t = 0.0
+			_monedas.iman_radio = 0.0
+			_hud.aviso("Imán agotado")
+			_sonidos.reproducir("fin_fantasma")
+	_hud.set_iman(_iman_t)
+
 	if _ovni == null:
 		_t_ovni -= delta
 		if _t_ovni <= 0.0:
@@ -276,8 +287,6 @@ func _iniciar_partida():
 	_tienda.mostrar_boton(false)
 	_hud.set_monedas(_tienda.monedas)
 	_apariciones = 0
-	_cargas[GestorPowerUps.Tipo.FANTASMA] = 0
-	_cargas[GestorPowerUps.Tipo.AHUYENTAR] = 0
 	_botones.visible = true
 	_nivel = 1
 	_tiempo = 0.0
@@ -286,6 +295,7 @@ func _iniciar_partida():
 	_colocar_bola()
 	_menu.ocultar()
 	get_tree().paused = false
+	_iniciar_iman()
 
 func _on_meta_alcanzada(cuerpo: Node3D):
 	if cuerpo is RigidBody3D:
@@ -310,6 +320,7 @@ func _nuevo_nivel():
 		semilla += 1
 	generar()
 	_colocar_bola()
+	_iniciar_iman()
 
 func golpe_pared(impacto: float, pos: Vector3):  # la llama la esfera al chocar con una pared
 	if _fantasma > 0.0:
@@ -513,4 +524,14 @@ func _aplicar_mejoras():
 	duracion_fantasma = _base["fantasma"] + 1.0 * _tienda.nivel("fantasma")
 	duracion_ahuyentar = _base["ahuyentar"] + 1.0 * _tienda.nivel("ahuyentar")
 	max_cargas = _base["cargas"] + _tienda.nivel("cargas")
+	_tienda.tope_cargas = max_cargas
+	vida_max = _base["vida"] * (1.0 + 0.10 * _tienda.nivel("vida"))
+	duracion_fantasma = _base["fantasma"] + 1.0 * _tienda.nivel("fantasma")
+	duracion_ahuyentar = _base["ahuyentar"] + 1.0 * _tienda.nivel("ahuyentar")
+	max_cargas = _base["cargas"] + _tienda.nivel("cargas")
 	_monedas.iman_radio = 1.5 * _tienda.nivel("iman")
+	
+func _iniciar_iman():
+	var nv := _tienda.nivel("iman")
+	_iman_t = 8.0 * nv
+	_monedas.iman_radio = iman_radio if nv > 0 else 0.0

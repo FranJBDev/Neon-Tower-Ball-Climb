@@ -24,7 +24,7 @@ func crear(gen: GeneradorLaberinto, rng: RandomNumberGenerator, cantidad: int):
 		if libres.is_empty():
 			break
 		var celda: Vector2i = libres.pop_at(rng.randi() % libres.size())
-		_crear_moneda(gen.centro_celda(celda.x, celda.y) + Vector3(0, 0.55, 0))
+		_crear_moneda(gen.centro_celda(celda.x, celda.y) + Vector3(0, 1.1, 0))
 
 
 func limpiar():
@@ -52,13 +52,13 @@ func _crear_moneda(pos: Vector3):
 
 	var col := CollisionShape3D.new()
 	var forma := SphereShape3D.new()
-	forma.radius = 0.5
+	forma.radius = 0.6
 	col.shape = forma
 	area.add_child(col)
 
 	var disco := CylinderMesh.new()
-	disco.top_radius = 0.24
-	disco.bottom_radius = 0.24
+	disco.top_radius = 0.3
+	disco.bottom_radius = 0.3
 	disco.height = 0.06
 	var malla := MeshInstance3D.new()
 	malla.mesh = disco
@@ -77,6 +77,7 @@ func _material() -> StandardMaterial3D:
 		_mat.emission_enabled = true
 		_mat.emission = COLOR
 		_mat.emission_energy_multiplier = 1.3
+		_mat.disable_fog = true
 	return _mat
 
 

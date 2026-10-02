@@ -11,6 +11,7 @@ var _estilo_barra: StyleBoxFlat
 var _etiqueta_monedas: Label
 var _aviso: Label
 var _tween_aviso: Tween
+var _etiqueta_iman: Label
 
 func _ready():
 	# Barra de vida: delgada, arriba y de lado a lado
@@ -55,6 +56,17 @@ func _ready():
 	_etiqueta_monedas.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	_etiqueta_monedas.offset_left = 40
 	_etiqueta_monedas.offset_top = 128
+	
+	_etiqueta_iman = Label.new()
+	_etiqueta_iman.add_theme_font_size_override("font_size", 30)
+	_etiqueta_iman.add_theme_color_override("font_color", Color(0.55, 0.8, 1.0))
+	_etiqueta_iman.add_theme_color_override("font_outline_color", Color.BLACK)
+	_etiqueta_iman.add_theme_constant_override("outline_size", 8)
+	_etiqueta_iman.visible = false
+	add_child(_etiqueta_iman)
+	_etiqueta_iman.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	_etiqueta_iman.offset_left = 40
+	_etiqueta_iman.offset_top = 168
 
 	_aviso = Label.new()
 	_aviso.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -131,3 +143,9 @@ func aviso(texto: String):
 	_tween_aviso = create_tween()
 	_tween_aviso.tween_interval(1.0)
 	_tween_aviso.tween_property(_aviso, "modulate:a", 0.0, 0.6)
+
+func set_iman(segundos: float):
+	_etiqueta_iman.visible = segundos > 0.0
+	if segundos > 0.0:
+		_etiqueta_iman.text = "IMÁN  %d s" % int(ceil(segundos))
+		_etiqueta_iman.modulate.a = 1.0 if segundos > 3.0 or int(segundos * 4.0) % 2 == 0 else 0.35
