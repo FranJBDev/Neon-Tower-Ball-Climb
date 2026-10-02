@@ -23,6 +23,7 @@ var monedas := 0
 var tope_cargas := 3
 var margen_inferior := 0.0
 var fuente_margen: Callable      # de dónde sacar el alto del banner
+var ajuste_escala := 1.0         # súbelo (1.2, 1.5...) si aún lo ves pequeño; bájalo si lo ves grande
 var cargas := {
 	GestorPowerUps.Tipo.FANTASMA: 0,
 	GestorPowerUps.Tipo.AHUYENTAR: 0,
@@ -30,11 +31,15 @@ var cargas := {
 
 var _niveles := {}
 var _sucio := false
+var _escala := 1.0
+var _ultimo_ancho := -1.0
 var _botones_item := {}
+var _secciones: Array[Label] = []
 var _boton: Button
 var _panel: Control
 var _fondo: ColorRect
 var _cabecera: VBoxContainer
+var _titulo: Label
 var _etiqueta_monedas: Label
 var _scroll: ScrollContainer
 var _lista: VBoxContainer
@@ -52,7 +57,6 @@ func _ready():
 
 	_boton = Button.new()
 	_boton.focus_mode = Control.FOCUS_NONE
-	_boton.add_theme_font_size_override("font_size", 30)
 	_estilar(_boton, ORO)
 	_boton.pressed.connect(abrir)
 	_boton.visible = false
@@ -63,6 +67,7 @@ func _ready():
 	_refrescar()
 	#debug monedas
 	monedas = 500
+
 
 func _crear_panel():
 	_panel = Control.new()
@@ -77,15 +82,13 @@ func _crear_panel():
 	_cabecera = VBoxContainer.new()
 	_cabecera.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_panel.add_child(_cabecera)
-	var titulo := Label.new()
-	titulo.text = "TIENDA"
-	titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	titulo.add_theme_font_size_override("font_size", 52)
-	titulo.add_theme_color_override("font_color", CIAN)
-	_cabecera.add_child(titulo)
+	_titulo = Label.new()
+	_titulo.text = "TIENDA"
+	_titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_titulo.add_theme_color_override("font_color", CIAN)
+	_cabecera.add_child(_titulo)
 	_etiqueta_monedas = Label.new()
 	_etiqueta_monedas.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_etiqueta_monedas.add_theme_font_size_override("font_size", 34)
 	_etiqueta_monedas.add_theme_color_override("font_color", ORO)
 	_cabecera.add_child(_etiqueta_monedas)
 
@@ -94,7 +97,6 @@ func _crear_panel():
 	_panel.add_child(_scroll)
 	_lista = VBoxContainer.new()
 	_lista.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_lista.add_theme_constant_override("separation", 14)
 	_scroll.add_child(_lista)
 
 	_seccion("PODERES DE UN USO")
@@ -107,7 +109,6 @@ func _crear_panel():
 	_cerrar = Button.new()
 	_cerrar.text = "CERRAR"
 	_cerrar.focus_mode = Control.FOCUS_NONE
-	_cerrar.add_theme_font_size_override("font_size", 30)
 	_estilar(_cerrar, CIAN)
 	_cerrar.pressed.connect(cerrar)
 	_panel.add_child(_cerrar)
@@ -116,21 +117,35 @@ func _crear_panel():
 func _seccion(texto: String):
 	var l := Label.new()
 	l.text = texto
-	l.add_theme_font_size_override("font_size", 24)
 	l.add_theme_color_override("font_color", ORO)
 	_lista.add_child(l)
+	_secciones.append(l)
 
 
 func _crear_item(id: String):
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(0, 100)
 	b.focus_mode = Control.FOCUS_NONE
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	b.add_theme_font_size_override("font_size", 26)
 	_estilar(b, CIAN)
 	b.pressed.connect(comprar.bind(id))
 	_lista.add_child(b)
 	_botones_item[id] = b
+
+
+# Tamaños de letra y botones según el ancho de la pantalla
+func _aplicar_escala():
+	var e := _escala
+	_boton.add_theme_font_size_override("font_size", int(34 * e))
+	_cerrar.add_theme_font_size_override("font_size", int(34 * e))
+	_titulo.add_theme_font_size_override("font_size", int(58 * e))
+	_etiqueta_monedas.add_theme_font_size_override("font_size", int(38 * e))
+	for l in _secciones:
+		l.add_theme_font_size_override("font_size", int(28 * e))
+	for id in _botones_item:
+		var b: Button = _botones_item[id]
+		b.add_theme_font_size_override("font_size", int(30 * e))
+		b.custom_minimum_size = Vector2(0, 130.0 * e)
+	_lista.add_theme_constant_override("separation", int(16 * e))
 
 
 func _margen() -> float:
@@ -141,23 +156,29 @@ func _margen() -> float:
 
 func _process(_delta):
 	var p := get_viewport().get_visible_rect().size
-	var margen := _margen()
+	if absf(p.x - _ultimo_ancho) > 1.0:
+		_ultimo_ancho = p.x
+		_escala = clampf(p.x / 600.0, 1.0, 2.5) * ajuste_escala
+		_aplicar_escala()
+
+	var alto_btn := 90.0 * _escala
+	var ancho_btn := 280.0 * _escala
+	var y_botones := p.y - _margen() - alto_btn - 50.0
 	if _boton.visible:
-		_boton.size = Vector2(260, 90)
-		_boton.position = Vector2((p.x - 260.0) / 2.0, p.y - 150.0 - margen)
+		_boton.size = Vector2(ancho_btn, alto_btn)
+		_boton.position = Vector2((p.x - ancho_btn) / 2.0, y_botones)
 	if _panel.visible:
 		_panel.size = p
 		_fondo.size = p
-		var ancho := minf(p.x - 80.0, 680.0)
+		var ancho := p.x * 0.92
 		var x := (p.x - ancho) / 2.0
-		_cabecera.position = Vector2(x, 70)
+		_cabecera.position = Vector2(x, 60)
 		_cabecera.size = Vector2(ancho, 0)
-		var y_lista := 70.0 + _cabecera.get_combined_minimum_size().y + 16.0
-		var y_cerrar := p.y - 150.0 - margen
+		var y_lista := 60.0 + _cabecera.get_combined_minimum_size().y + 16.0
 		_scroll.position = Vector2(x, y_lista)
-		_scroll.size = Vector2(ancho, maxf(100.0, y_cerrar - 16.0 - y_lista))
-		_cerrar.size = Vector2(260, 90)
-		_cerrar.position = Vector2((p.x - 260.0) / 2.0, y_cerrar)
+		_scroll.size = Vector2(ancho, maxf(100.0, y_botones - 16.0 - y_lista))
+		_cerrar.size = Vector2(ancho_btn, alto_btn)
+		_cerrar.position = Vector2((p.x - ancho_btn) / 2.0, y_botones)
 
 
 func _notification(what):
