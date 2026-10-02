@@ -26,6 +26,7 @@ func _ready():
 		"ovni_aparece": [300.0, 700.0, 0.6, 0.35, 1, 0.0],
 		"ovni_carga": [200.0, 1500.0, 0.8, 0.35, 0, 0.05],
 		"ovni_disparo": [1800.0, 80.0, 0.4, 0.6, 1, 0.2],
+		"moneda": [1000.0, 1700.0, 0.12, 0.35, 0, 0.0],
 	}
 	for nombre in defs:
 		var d: Array = defs[nombre]

@@ -40,6 +40,9 @@ extends Node3D
 @export var ovni_factor := 0.8            # cada aparición acorta la espera (x0.8)
 @export var ovni_espera_min := 20.0
 
+@export_group("Monedas")
+@export var monedas_por_nivel := 16
+
 const OFFSET_CAMARA := Vector3(0, 6, 3)
 var _powerups: GestorPowerUps
 var _fantasma := 0.0
@@ -79,7 +82,19 @@ var _ovni: Ovni
 var _t_ovni := 0.0
 var _apariciones := 0
 
+var _monedas: GestorMonedas
+var _tienda: Tienda
+var _monedas_partida := 0
+var _base := {}
+
 func _ready():
+	_base = {
+		"vida": vida_max,
+		"fantasma": duracion_fantasma,
+		"ahuyentar": duracion_ahuyentar,
+		"cargas": max_cargas,
+	}
+	
 	if bola == null:
 		for hijo in get_children():
 			if hijo is RigidBody3D:
@@ -101,7 +116,8 @@ func _ready():
 	
 	_sonidos = Sonidos.new()
 	add_child(_sonidos)
-	_sonidos.silenciado = _musica.silenciada
+	_sonidos.silenciado = _musica.silenciada	
+	_sonidos.process_mode = Node.PROCESS_MODE_ALWAYS   # para que suene en el menú y la tienda
 
 	var forma := SphereShape3D.new()
 	forma.radius = 0.45
@@ -120,6 +136,11 @@ func _ready():
 	_powerups = GestorPowerUps.new()
 	add_child(_powerups)
 	_powerups.recogido.connect(_on_powerup, CONNECT_DEFERRED)
+	
+	_monedas = GestorMonedas.new()
+	add_child(_monedas)
+	_monedas.recogida.connect(_on_moneda, CONNECT_DEFERRED)
+	
 	if bola:
 		bola.set_collision_mask_value(2, true)  # la bola choca con las paredes (capa 2)
 
@@ -136,6 +157,11 @@ func _ready():
 	_botones = BotonesPoder.new()
 	capa_botones.add_child(_botones)
 	_botones.presionado.connect(_on_boton_poder)
+	
+	_tienda = Tienda.new()
+	add_child(_tienda)
+	_tienda.fuente_margen = _botones._alto_banner
+	_tienda.comprada.connect(func(): _sonidos.reproducir("curar"))
 	
 	_anuncios.banner_listo.connect(func(px): _botones.alto_banner_px = px)
 	
@@ -163,6 +189,8 @@ func _ready():
 		texto_inicio += "\nRécord: nivel %d" % _mejor_nivel
 	_menu.mostrar("NEON TOWER", texto_inicio, "JUGAR")
 	#_menu.mostrar("NEON TOWER", "Inclina el celular\npara llegar a la meta", "JUGAR")
+	_tienda.mostrar_boton(true)
+	_hud.set_monedas(_tienda.monedas)
 	get_tree().paused = true
 
 func _process(delta):
@@ -219,6 +247,9 @@ func generar():
 	_minimapa.configurar(_gen, self, bola)
 	_powerups.crear(_gen, _rng, powerups_por_nivel)
 	
+	_monedas.objetivo = bola
+	_monedas.crear(_gen, _rng, monedas_por_nivel)
+	
 	if is_instance_valid(_ovni):
 		_ovni.queue_free()
 	_ovni = null
@@ -240,6 +271,10 @@ func _colocar_bola():
 # ---------- Flujo del juego ----------
 
 func _iniciar_partida():
+	_aplicar_mejoras()
+	_monedas_partida = 0
+	_tienda.mostrar_boton(false)
+	_hud.set_monedas(_tienda.monedas)
 	_apariciones = 0
 	_cargas[GestorPowerUps.Tipo.FANTASMA] = 0
 	_cargas[GestorPowerUps.Tipo.AHUYENTAR] = 0
@@ -258,6 +293,13 @@ func _on_meta_alcanzada(cuerpo: Node3D):
 
 
 func _nuevo_nivel():
+	var bono := 5 + _nivel * 2 + int(clampf((60.0 - _tiempo) / 10.0, 0.0, 5.0))
+	_tienda.agregar_monedas(bono)
+	_monedas_partida += bono
+	_tienda.guardar()
+	_hud.set_monedas(_tienda.monedas)
+	_hud.aviso("+%d monedas" % bono)
+	
 	if _mejor < 0.0 or _tiempo < _mejor:
 		_mejor = _tiempo
 	Ajustes.guardar("juego", "mejor_tiempo", _mejor)
@@ -302,6 +344,9 @@ func _on_enemigo_toco(enemigo: Node3D, cuerpo: RigidBody3D):
 
 func _fin_del_juego():
 	var detalle := "Llegaste al nivel %d" % _nivel
+	detalle += "\nMonedas ganadas: %d" % _monedas_partida
+	_tienda.guardar()
+	_tienda.mostrar_boton(true)
 	_botones.visible = false
 	if _mejor >= 0.0:
 		detalle += "\nMejor tiempo: %.1f s" % _mejor
@@ -454,3 +499,18 @@ func _on_ovni_disparo():
 func _on_ovni_terminado():
 	_ovni = null
 	_programar_ovni()
+	
+func _on_moneda(pos: Vector3):
+	_tienda.agregar_monedas(1)
+	_monedas_partida += 1
+	_hud.set_monedas(_tienda.monedas)
+	_powerups.explosion(pos, Color(1.0, 0.72, 0.08), 8)
+	_sonidos.reproducir("moneda", -4.0)
+
+
+func _aplicar_mejoras():
+	vida_max = _base["vida"] * (1.0 + 0.10 * _tienda.nivel("vida"))
+	duracion_fantasma = _base["fantasma"] + 1.0 * _tienda.nivel("fantasma")
+	duracion_ahuyentar = _base["ahuyentar"] + 1.0 * _tienda.nivel("ahuyentar")
+	max_cargas = _base["cargas"] + _tienda.nivel("cargas")
+	_monedas.iman_radio = 1.5 * _tienda.nivel("iman")

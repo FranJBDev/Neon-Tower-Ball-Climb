@@ -8,7 +8,9 @@ var _boton_musica: BotonSonido
 var _etiqueta: Label
 var _barra: ProgressBar
 var _estilo_barra: StyleBoxFlat
-
+var _etiqueta_monedas: Label
+var _aviso: Label
+var _tween_aviso: Tween
 
 func _ready():
 	# Barra de vida: delgada, arriba y de lado a lado
@@ -43,6 +45,28 @@ func _ready():
 	_etiqueta.offset_left = 40
 	_etiqueta.offset_right = -40
 	_etiqueta.offset_top = 82
+	
+	_etiqueta_monedas = Label.new()
+	_etiqueta_monedas.add_theme_font_size_override("font_size", 30)
+	_etiqueta_monedas.add_theme_color_override("font_color", Color(1.0, 0.72, 0.08))
+	_etiqueta_monedas.add_theme_color_override("font_outline_color", Color.BLACK)
+	_etiqueta_monedas.add_theme_constant_override("outline_size", 8)
+	add_child(_etiqueta_monedas)
+	_etiqueta_monedas.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	_etiqueta_monedas.offset_left = 40
+	_etiqueta_monedas.offset_top = 128
+
+	_aviso = Label.new()
+	_aviso.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_aviso.add_theme_font_size_override("font_size", 44)
+	_aviso.add_theme_color_override("font_color", Color(1.0, 0.72, 0.08))
+	_aviso.add_theme_color_override("font_outline_color", Color.BLACK)
+	_aviso.add_theme_constant_override("outline_size", 10)
+	_aviso.modulate.a = 0.0
+	add_child(_aviso)
+	_aviso.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	_aviso.offset_top = 300
+	
 	# Botón de música (arriba a la derecha, debajo de la barra)
 	layer = 20  # sobre el menú, para poder usarlo también en la pantalla de inicio
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -94,3 +118,16 @@ class BotonSonido extends Button:
 		else:
 			draw_arc(Vector2(38, 32), 10.0, -0.9, 0.9, 12, cian, 3.0)
 			draw_arc(Vector2(38, 32), 18.0, -0.9, 0.9, 12, cian, 3.0)
+
+func set_monedas(n: int):
+	_etiqueta_monedas.text = "Monedas: %d" % n
+
+
+func aviso(texto: String):
+	_aviso.text = texto
+	_aviso.modulate.a = 1.0
+	if _tween_aviso:
+		_tween_aviso.kill()
+	_tween_aviso = create_tween()
+	_tween_aviso.tween_interval(1.0)
+	_tween_aviso.tween_property(_aviso, "modulate:a", 0.0, 0.6)
