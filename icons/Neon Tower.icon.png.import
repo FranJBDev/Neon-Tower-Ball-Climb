@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bo34x8ht4iwm4"
-path="res://.godot/imported/icono_192.png-577acea95022eeaded1e1ef13dcff57e.ctex"
+uid="uid://c3wu1nm7cjtm4"
+path="res://.godot/imported/Neon Tower.icon.png-9c5ea8aee9240f1c82a7f51faa2e54b1.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://icono_192.png"
-dest_files=["res://.godot/imported/icono_192.png-577acea95022eeaded1e1ef13dcff57e.ctex"]
+source_file="res://icons/Neon Tower.icon.png"
+dest_files=["res://.godot/imported/Neon Tower.icon.png-9c5ea8aee9240f1c82a7f51faa2e54b1.ctex"]
 
 [params]
 

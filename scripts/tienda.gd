@@ -66,7 +66,7 @@ func _ready():
 	_panel.visible = false
 	_refrescar()
 	#debug monedas
-	monedas = 500
+	#monedas = 500
 
 
 func _crear_panel():

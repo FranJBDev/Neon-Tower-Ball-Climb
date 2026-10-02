@@ -108,8 +108,8 @@ func _ready():
 	_mejor = Ajustes.leer("juego", "mejor_tiempo", -1.0)
 	_vida = vida_max
 
-	_anuncios = Anuncios.new()
-	add_child(_anuncios)
+	#_anuncios = Anuncios.new()
+	#add_child(_anuncios)
 	
 	_musica = Musica.new()
 	_musica.cancion = cancion
@@ -164,7 +164,8 @@ func _ready():
 	_tienda.fuente_margen = _botones._alto_banner
 	_tienda.comprada.connect(func(): _sonidos.reproducir("curar"))
 	
-	_anuncios.banner_listo.connect(func(px): _botones.alto_banner_px = px)
+	if _anuncios:
+		_anuncios.banner_listo.connect(func(px): _botones.alto_banner_px = px)
 	
 	_hud.boton_musica_presionado.connect(_on_boton_musica)
 	_hud.set_musica_silenciada(_musica.silenciada)

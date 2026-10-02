@@ -11,7 +11,8 @@ var _ad_view: AdView
 func _ready():
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	# Pega aquí tu código de anuncios que ya funciona.
-	if OS.get_name() != "Android" and not OS.has_feature("editor"):
+	#if OS.get_name() != "Android" and not OS.has_feature("editor"):
+	if OS.get_name() != "Android":
 		return
 	var listener := OnInitializationCompleteListener.new()
 	listener.on_initialization_complete = _on_ads_listos
