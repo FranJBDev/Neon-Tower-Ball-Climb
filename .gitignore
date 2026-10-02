@@ -7,6 +7,7 @@ mono_crash.*
 *.aab
 *.keystore
 *.jks
+build/*
 
 # Ignorar todo dentro de android/build, excepto configuraciones manuales
 android/build/*
