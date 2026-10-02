@@ -52,19 +52,19 @@ func _integrate_forces(state: PhysicsDirectBodyState3D):
 		var impacto := -_vel_prev.dot(n)
 		if impacto > umbral_impacto and _cooldown <= 0.0:
 			_cooldown = 0.12
-			_golpe(impacto)
+			_golpe(impacto, state.get_contact_local_position(i))
 	_vel_prev = state.linear_velocity
 
 
-func _golpe(impacto: float):
+func _golpe(impacto: float, pos: Vector3):
 	var f := clampf(impacto / escala_impacto, 0.2, 1.0)
 	_sonido.volume_db = linear_to_db(lerpf(0.6, 1.0, f))
 	_sonido.pitch_scale = randf_range(0.9, 1.1)
 	_sonido.play()
-	Input.vibrate_handheld(int(lerpf(20.0, 60.0, f)), f)
+	Input.vibrate_handheld(int(lerpf(60.0, 120.0, f)), f)
 	var padre := get_parent()
-	if padre and padre.has_method("recibir_golpe"):
-		padre.call("recibir_golpe", impacto)
+	if padre and padre.has_method("golpe_pared"):
+		padre.call("golpe_pared", impacto, pos)
 
 
 func _crear_sonido_choque() -> AudioStreamWAV:

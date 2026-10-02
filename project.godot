@@ -8,11 +8,15 @@
 
 config_version=5
 
+[admob]
+
+general/ios/enabled=false
+
 [application]
 
 config/name="Neon Tower"
 run/main_scene="res://scenes/labyrinth.tscn"
-config/features=PackedStringArray("4.3", "GL Compatibility")
+config/features=PackedStringArray("4.5", "GL Compatibility")
 config/icon="res://icon.svg"
 
 [display]
@@ -22,6 +26,14 @@ window/size/viewport_height=1920
 window/stretch/mode="canvas_items"
 window/stretch/aspect="keep_width"
 window/handheld/orientation=1
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/admob/plugin.cfg")
+
+[input_devices]
+
+sensors/enable_accelerometer=true
 
 [physics]
 

@@ -2,3 +2,11 @@
 .mono/
 data_*/
 mono_crash.*
+# Excluir binarios generados al exportar
+*.apk
+*.aab
+
+# Ignorar todo dentro de android/build, excepto configuraciones manuales
+android/build/*
+!android/build/AndroidManifest.xml
+!android/build/config.gradle

@@ -1,5 +1,18 @@
 extends Node3D
 
+# ID de PRUEBA de Google. Cámbialo por el tuyo solo al publicar.
+@export var banner_unit_id := "ca-app-pub-3940256099942544/6300978111"
+var _ad_view: AdView
+
+@export_group("Enemigos")
+@export var max_enemigos := 6
+@export var velocidad_enemigo := 1.2
+@export var impacto_enemigo := 5.0  # equivale a unos 15 de daño en el nivel 1
+
+var _pared_der := []
+var _pared_abajo := []
+var _inv_enemigo := 0.0
+
 @export var columnas := 5
 @export var filas := 9
 @export var tam_celda := 2.0
@@ -37,6 +50,7 @@ var _menu_boton: Button
 
 
 func _ready():
+	_iniciar_anuncios()
 	if bola == null:
 		for hijo in get_children():
 			if hijo is RigidBody3D:
@@ -50,9 +64,24 @@ func _ready():
 
 func _process(delta):
 	_tiempo += delta
+	_inv_enemigo = maxf(0.0, _inv_enemigo - delta)
 	_actualizar_hud()
+	
+func _iniciar_anuncios():
+	if OS.get_name() != "Android" and not OS.has_feature("editor"):
+		return
+	var listener := OnInitializationCompleteListener.new()
+	listener.on_initialization_complete = _on_ads_listos
+	MobileAds.initialize(listener)
 
 
+func _on_ads_listos(_estado):
+	call_deferred("_cargar_banner")
+
+
+func _cargar_banner():
+	_ad_view = AdView.new(banner_unit_id, AdSize.BANNER, AdPosition.BOTTOM)
+	_ad_view.load_ad(AdRequest.new())
 # ---------- Flujo del juego ----------
 
 func _iniciar_partida():
@@ -274,6 +303,9 @@ func generar():
 				prof_max = pila.size()
 				meta = sig
 
+	_pared_der = pared_der
+	_pared_abajo = pared_abajo
+
 	var x0 := -columnas * tam_celda / 2.0
 	var z0 := -filas * tam_celda / 2.0
 	var y := alto / 2.0
@@ -293,6 +325,7 @@ func generar():
 					Vector3(tam_celda + grosor, alto, grosor))
 
 	_crear_meta(meta)
+	_crear_enemigos()
 
 
 func _centro_celda(c: int, r: int) -> Vector3:
@@ -301,6 +334,60 @@ func _centro_celda(c: int, r: int) -> Vector3:
 		0.0,
 		(r + 0.5 - filas / 2.0) * tam_celda)
 
+
+func posicion_celda(c: Vector2i) -> Vector3:
+	return _centro_celda(c.x, c.y) + Vector3(0, 0.55, 0)
+
+
+func siguiente_celda(c: Vector2i, previa: Vector2i) -> Vector2i:
+	var vecinos: Array[Vector2i] = []
+	if c.x < columnas - 1 and not _pared_der[c.x][c.y]:
+		vecinos.append(Vector2i(c.x + 1, c.y))
+	if c.x > 0 and not _pared_der[c.x - 1][c.y]:
+		vecinos.append(Vector2i(c.x - 1, c.y))
+	if c.y < filas - 1 and not _pared_abajo[c.x][c.y]:
+		vecinos.append(Vector2i(c.x, c.y + 1))
+	if c.y > 0 and not _pared_abajo[c.x][c.y - 1]:
+		vecinos.append(Vector2i(c.x, c.y - 1))
+	if vecinos.size() > 1:
+		vecinos.erase(previa)  # no se devuelve, salvo en callejones sin salida
+	return vecinos[_rng.randi() % vecinos.size()]
+
+
+func _crear_enemigos():
+	var cantidad := mini(1 + int(_nivel / 2.0), max_enemigos)
+	var vel := minf(velocidad_enemigo + 0.1 * (_nivel - 1), 2.5)
+
+	# Solo celdas lejos de la salida
+	var libres: Array[Vector2i] = []
+	for c in columnas:
+		for r in filas:
+			var dist := absi(c - _celda_inicio.x) + absi(r - _celda_inicio.y)
+			if dist >= 4:
+				libres.append(Vector2i(c, r))
+
+	for i in cantidad:
+		if libres.is_empty():
+			break
+		var celda: Vector2i = libres.pop_at(_rng.randi() % libres.size())
+		var e := Enemigo.new()
+		e.laberinto = self
+		e.celda = celda
+		e.destino = siguiente_celda(celda, Vector2i(-1, -1))
+		e.velocidad = vel
+		e.position = posicion_celda(celda)
+		_contenedor.add_child(e)
+
+
+func golpe_enemigo(enemigo: Node3D, cuerpo: RigidBody3D):
+	if _inv_enemigo > 0.0 or get_tree().paused:
+		return
+	_inv_enemigo = 1.0
+	var dir := cuerpo.global_position - enemigo.global_position
+	dir.y = 0.0
+	cuerpo.apply_central_impulse(dir.normalized() * 4.0)
+	Input.vibrate_handheld(120)
+	recibir_golpe(impacto_enemigo)
 
 func _crear_pared(pos: Vector3, tam: Vector3):
 	var cuerpo := StaticBody3D.new()
@@ -370,3 +457,45 @@ func _obtener_material_meta() -> Material:
 		m.emission_energy_multiplier = 3.0
 		_mat_meta = m
 	return _mat_meta
+
+
+class Enemigo extends Area3D:
+	var laberinto
+	var celda := Vector2i.ZERO
+	var destino := Vector2i.ZERO
+	var velocidad := 1.2
+	var _malla: MeshInstance3D
+
+	func _ready():
+		var col := CollisionShape3D.new()
+		var forma := SphereShape3D.new()
+		forma.radius = 0.35
+		col.shape = forma
+		add_child(col)
+
+		_malla = MeshInstance3D.new()
+		var caja := BoxMesh.new()
+		caja.size = Vector3(0.6, 0.6, 0.6)
+		_malla.mesh = caja
+		var m := StandardMaterial3D.new()
+		m.albedo_color = Color(1, 0.15, 0.1)
+		m.emission_enabled = true
+		m.emission = Color(1, 0.15, 0.1)
+		m.emission_energy_multiplier = 3.0
+		_malla.material_override = m
+		add_child(_malla)
+
+	func _physics_process(delta):
+		_malla.rotate_y(3.0 * delta)
+		_malla.rotate_x(2.0 * delta)
+
+		var objetivo: Vector3 = laberinto.posicion_celda(destino)
+		position = position.move_toward(objetivo, velocidad * delta)
+		if position.distance_to(objetivo) < 0.01:
+			var previa := celda
+			celda = destino
+			destino = laberinto.siguiente_celda(celda, previa)
+
+		for cuerpo in get_overlapping_bodies():
+			if cuerpo is RigidBody3D:
+				laberinto.golpe_enemigo(self, cuerpo)
