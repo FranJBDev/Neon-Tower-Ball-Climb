@@ -41,7 +41,7 @@ extends Node3D
 @export var ovni_espera_min := 20.0
 
 @export_group("Monedas")
-@export var monedas_por_nivel := 16
+@export var monedas_por_nivel := 100
 @export var iman_radio := 4.5
 var _iman_t := 0.0
 
