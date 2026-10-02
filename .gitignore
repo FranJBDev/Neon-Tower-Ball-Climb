@@ -5,6 +5,8 @@ mono_crash.*
 # Excluir binarios generados al exportar
 *.apk
 *.aab
+*.keystore
+*.jks
 
 # Ignorar todo dentro de android/build, excepto configuraciones manuales
 android/build/*
